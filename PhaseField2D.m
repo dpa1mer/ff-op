@@ -4,6 +4,7 @@ function PhaseField2D(verts, faces)
 % [verts, faces] = load_mesh('~/Downloads/clover.obj');
 tri = triangulation(faces, verts);
 bdryIdx = freeBoundary(tri);
+nb = size(bdryIdx, 1);
 nv = size(verts, 1);
 nf = size(faces, 1);
 
@@ -117,8 +118,32 @@ crDI = repmat(reshape(faceEdgeTNIdx, 6, 1, nf), 1, 3, 1);
 crDJ = repmat(reshape(faces.', 1, 3, nf), 6, 1, 1);
 Dcr = sparse(crDI(:), crDJ(:), crDij(:), 2 * ne, nv);
 
+%% Impose 0-Neumann boundary conditions
+
+[bdryFaceIdx, ~] = find(B.');
+bdryFaces = faces(bdryFaceIdx, :);
+[bdryFaceEdgeIdx, ~] = find((bdryEdgeIdx == face2edge(bdryFaceIdx, :)).');
+bdryFaceEdgeIdx = reshape(bdryFaceEdgeIdx, [], 1);
+bdryFaceShift = mod(bdryFaceEdgeIdx + (-2:0), 3) + 1;
+bdryFaceShift = sub2ind(size(bdryFaces), repmat((1:nb).', 1, 3), bdryFaceShift);
+bdryFaces = reshape(bdryFaces(bdryFaceShift), nb, 3);
+bdryFaceVertAngles = vertAngles(bdryFaceIdx, :);
+bdryFaceVertAngles = reshape(bdryFaceVertAngles(bdryFaceShift), nb, 3);
+bdryFaceLengths = squeeze(faceEdgeLengths(:, :, bdryFaceIdx)).';
+bdryFaceLengths = reshape(bdryFaceLengths(bdryFaceShift), nb, 3);
+
+bdryBasis = speye(nv);
+vk = bdryFaces(:, 1);
+bdryBasis = bdryBasis + sparse(bdryFaces(:, [1 1]), bdryFaces(:, 2:3), cos(bdryFaceVertAngles(:, 2:3)) .* bdryFaceLengths(:, [1 3]) ./ bdryFaceLengths(:, 2), nv, nv);
+allButVk = setdiff((1:nv).', vk);
+bdryBasis = bdryBasis(:, allButVk);
+
+%% Compute eigenfunctions
 A = (Dcr.' * (Mcr \ (CR * (Mcr \ Dcr))));
-[V, lambda] = eigs(A, star0, 100, 'smallestabs', 'IsSymmetricDefinite', true);
+A = bdryBasis.' * A * bdryBasis;
+M = bdryBasis.' * star0 * bdryBasis;
+[V, lambda] = eigs(A, M, 100, 'smallestabs');%, 'IsSymmetricDefinite', true);
+V = bdryBasis * V;
 % [W, ~] = eigs(L, star0, 100, 'smallestabs');
 figure;
 % k = 200;
