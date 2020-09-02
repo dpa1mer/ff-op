@@ -2,6 +2,7 @@ function PhaseField2D(verts, faces)
 
 %% Load mesh. Note: triangles must be oriented consistently
 % [verts, faces] = load_mesh('~/Downloads/clover.obj');
+faces = flip_ears(verts, faces);
 tri = triangulation(faces, verts);
 bdryIdx = freeBoundary(tri);
 nb = size(bdryIdx, 1);
