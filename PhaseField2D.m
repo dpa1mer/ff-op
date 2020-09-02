@@ -134,10 +134,12 @@ bdryFaceLengths = squeeze(faceEdgeLengths(:, :, bdryFaceIdx)).';
 bdryFaceLengths = reshape(bdryFaceLengths(bdryFaceShift), nb, 3);
 
 bdryBasis = speye(nv);
-vk = bdryFaces(:, 1);
-bdryBasis = bdryBasis + sparse(bdryFaces(:, [1 1]), bdryFaces(:, 2:3), cos(bdryFaceVertAngles(:, 2:3)) .* bdryFaceLengths(:, [1 3]) ./ bdryFaceLengths(:, 2), nv, nv);
-allButVk = setdiff((1:nv).', vk);
-bdryBasis = bdryBasis(:, allButVk);
+% vk = bdryFaces(:, 1);
+bdryBasis = bdryBasis + sparse(bdryFaces(:, [1 1]), bdryFaces(:, [3 2]), cos(bdryFaceVertAngles(:, [2 3])) .* bdryFaceLengths(:, [1 3]) ./ bdryFaceLengths(:, 2), nv, nv);
+% allButVk = setdiff((1:nv).', vk);
+% bdryBasis = bdryBasis(:, allButVk);
+bdryNeighborCount = sum(bdryBasis ~= 0, 2);
+bdryBasis = bdryBasis(:, bdryNeighborCount == 1 | bdryNeighborCount > 2);
 
 %% Compute eigenfunctions
 A = (Dcr.' * (Mcr \ (CR * (Mcr \ Dcr))));
