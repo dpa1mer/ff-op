@@ -56,10 +56,19 @@ bdryNormals = bdryNormals ./ vecnorm(bdryNormals, 2, 2);
 bdryEdgeCenters = 0.5 * (verts(bdryIdx(:, 2), :) + verts(bdryIdx(:, 1), :));
 zb = (bdryNormals(:, 1) + 1i.*bdryNormals(:, 2)).^4;
 
-%% Compute cross field
+%% Compute cross field by MBO
 z4 = [Ldual B.'; B zeros(size(B, 1))] \ [zeros(nf, 1); zb];
 z4 = z4(1:nf);
 z4 = z4 ./ abs(z4);
+
+lambda = eigs(Ldual, star2, 2, 'smallestabs');
+tau = 2/lambda(2);
+Ambo = star2 + tau * Ldual;
+for j = 1:10
+    z4 = [Ambo, B.'; B zeros(size(B, 1))] \ [star2 * z4; zb];
+    z4 = z4(1:nf);
+    z4 = z4 ./ abs(z4);
+end
 
 z = (z4.^(1/4)) .* [1 1i -1 -1i];
 crossField = cat(3, real(z), imag(z), zeros(size(z)));
