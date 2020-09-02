@@ -19,21 +19,21 @@ face2edge = reshape(face2edge, [], 3);
 ne = size(edges, 1);
 
 %% Construct Hodge Stars
-vertOppEdges = reshape(faces(:, [2 3; 1 3; 1 2]), nf, 3, 2);
+vertOppEdges = face2edge(:, [2 3 1]);
 eij = verts(faces(:, [3 1 2]), :) - verts(faces, :);
 eik = verts(faces(:, [2 3 1]), :) - verts(faces, :);
 vertAngles = reshape(acos((dot(eij, eik, 2) ./ vecnorm(eij, 2, 2)) ./ vecnorm(eik, 2, 2)), nf, 3);
 oppositeCotans = cot(vertAngles);
 
 Lij = oppositeCotans / 2;
-L = sparse(vertOppEdges(:, :, 1), vertOppEdges(:, :, 2), Lij, nv, nv);
+L = sparse(edges(vertOppEdges, 1), edges(vertOppEdges, 2), Lij, nv, nv);
 star1 = spdiags(nonzeros(L'), 0, ne, ne);
 star1dual = spdiags(diag(star1).^(-1), 0, ne, ne);
 
 areas = 0.5 * vecnorm(cross(verts(faces(:, 1), :) - verts(faces(:, 2), :), verts(faces(:, 3), :) - verts(faces(:, 2), :)), 2, 2);
 star2 = spdiags(areas, 0, nf, nf);
 
-star0 = sparse(faces, faces, repmat(areas / 3, 1, 3), nv, nv);
+star0 = massmatrix(verts, faces, 'full');%sparse(faces, faces, repmat(areas / 3, 1, 3), nv, nv);
 
 %% Construct Laplacians
 d0 = sparse(repmat((1:ne).', 1, 2), edges, repmat([-1 1], ne, 1), ne, nv);
