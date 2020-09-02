@@ -142,10 +142,11 @@ bdryNeighborCount = sum(bdryBasis ~= 0, 2);
 bdryBasis = bdryBasis(:, bdryNeighborCount == 1 | bdryNeighborCount > 2);
 
 %% Compute eigenfunctions
-A = (Dcr.' * (Mcr \ (CR * (Mcr \ Dcr))));
+MinvDcr = Mcr \ Dcr;
+A = MinvDcr.' * CR * MinvDcr;
 A = bdryBasis.' * A * bdryBasis;
 M = bdryBasis.' * star0 * bdryBasis;
-[V, lambda] = eigs(A, M, 100, 'smallestabs');%, 'IsSymmetricDefinite', true);
+[V, lambda] = eigs(A + 1e-6 * M, M, 200, 'smallestabs');%, 'IsSymmetricDefinite', true);
 V = bdryBasis * V;
 % [W, ~] = eigs(L, star0, 100, 'smallestabs');
 figure;
