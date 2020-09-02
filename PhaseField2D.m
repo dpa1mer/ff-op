@@ -97,7 +97,7 @@ crTNGradContracted = crTNGradContracted .* crOrientation;
 
 areas = reshape(areas, 1, 1, nf);
 crTNxTN = (batchop('mult', crTNGrad, crTNGrad, 'N', 'T') ...
-         - batchop('mult', crTNGradContracted, crTNGradContracted, 'N', 'T')) ./ areas;
+         - 0.999*batchop('mult', crTNGradContracted, crTNGradContracted, 'N', 'T')) ./ areas;
 
 faceEdgeTNIdx = [2 * face2edge - 1, 2 * face2edge].';
 crI = repmat(reshape(faceEdgeTNIdx, 6, 1, nf), 1, 6, 1);
