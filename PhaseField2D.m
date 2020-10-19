@@ -34,6 +34,7 @@ areas = 0.5 * vecnorm(cross(verts(faces(:, 1), :) - verts(faces(:, 2), :), verts
 star2 = spdiags(areas, 0, nf, nf);
 
 star0 = massmatrix(verts, faces, 'full');%sparse(faces, faces, repmat(areas / 3, 1, 3), nv, nv);
+star0lump = massmatrix(verts, faces, 'barycentric');
 
 %% Construct Laplacians
 d0 = sparse(repmat((1:ne).', 1, 2), edges, repmat([-1 1], ne, 1), ne, nv);
@@ -73,7 +74,7 @@ end
 z = (z4.^(1/4)) .* [1 1i -1 -1i];
 crossField = cat(3, real(z), imag(z), zeros(size(z)));
 
-figure; FancyQuiver(repmat(faceCenters, 4, 1), reshape(crossField, nf * 4, 3), inferno, 0); view(2); axis image off;
+% figure; FancyQuiver(repmat(faceCenters, 4, 1), reshape(crossField, nf * 4, 3), inferno, 0); view(2); axis image off;
 
 %% Construct phase field operators
 faceEdgeVecs = reshape(verts(faceOrientedEdges(:, 2), :) - verts(faceOrientedEdges(:, 1), :), nf, 3, 3);
@@ -81,55 +82,92 @@ faceEdgeLengths = vecnorm(faceEdgeVecs, 2, 3);
 faceEdgeTangents = faceEdgeVecs ./ faceEdgeLengths;
 faceEdgeTangents = faceEdgeTangents(:, :, 1) + 1i .* faceEdgeTangents(:, :, 2);
 faceEdgeNormals = 1i .* faceEdgeTangents;
+% faceEdgeTangents = permute(cat(3, real(faceEdgeTangents), imag(faceEdgeTangents)), [3 1 2]);
+faceEdgeNormals = permute(cat(3, real(faceEdgeNormals), imag(faceEdgeNormals)), [3 1 2]);
 
-% Express in local frame
-faceEdgeTangents = faceEdgeTangents ./ z(:, 1);
-faceEdgeNormals = faceEdgeNormals ./ z(:, 1);
+% Gradient operator
+faceEdgeAltitudes = 2 * areas ./ faceEdgeLengths;
+hatGradients = faceEdgeNormals ./ reshape(faceEdgeAltitudes, 1, nf, 3);
+gI = repmat((1:2*nf).', 1, 3);
+gJ = repelem(faces(:, [3 1 2]), 2, 1); % Verts opposite edges
+G = sparse(gI(:), gJ(:), hatGradients(:), 2 * nf, nv);
 
-faceEdgeLengths = reshape(faceEdgeLengths.', 3, 1, nf);
-faceEdgeTangents = permute(cat(3, real(faceEdgeTangents), imag(faceEdgeTangents)), [2 3 1]);
-faceEdgeNormals = permute(cat(3, real(faceEdgeNormals), imag(faceEdgeNormals)), [2 3 1]);
+% Divergence operator
+dI = repmat((1:2:2*nf).' + [0 0 1 1], 1, 1, 3);
+dJ = reshape(4 * (faces(:, [3 1 2]) - 1), nf, 1, 3) + [1 2 3 4];
+dij = repmat(permute(hatGradients, [2 1 3]), 1, 2, 1);
+D = sparse(dI(:), dJ(:), dij(:), 2*nf, 4*nv);
 
-% Crouzeix-Raviart Frame-Dirichlet matrix
-% Isotropic Part
-crOrientation = repmat(reshape(faceOrientation.', 3, 1, nf), 2, 1, 1);
-crTGrad = reshape(reshape(faceEdgeTangents, 3, 2, 1, nf) .* reshape(faceEdgeNormals, 3, 1, 2, nf), 3, 4, nf);
-crNGrad = reshape(reshape(faceEdgeNormals, 3, 2, 1, nf) .* reshape(faceEdgeNormals, 3, 1, 2, nf), 3, 4, nf);
-crTNGrad = [crTGrad; crNGrad];
-crTNGrad = crTNGrad .* crOrientation;
+% Face area weights
+A = sparse((1:2*nf).', (1:2*nf).', repelem(areas, 2, 1), 2*nf, 2*nf);
 
-% Anisotropic Part
-crTGradContracted = faceEdgeTangents .* faceEdgeNormals;
-crNGradContracted = faceEdgeNormals .* faceEdgeNormals;
-crTNGradContracted = [crTGradContracted; crNGradContracted];
-crTNGradContracted = crTNGradContracted .* crOrientation;
+% Vertex weights
+M4 = kron(star0lump, speye(4));
 
-areas = reshape(areas, 1, 1, nf);
-crTNxTN = (batchop('mult', crTNGrad, crTNGrad, 'N', 'T') ...
-         - 0.999*batchop('mult', crTNGradContracted, crTNGradContracted, 'N', 'T')) ./ areas;
+% Cross field tensor
+u = [real(z(:, 1)), imag(z(:, 1))].';
+v = [real(z(:, 2)), imag(z(:, 2))].';
+u2 = reshape(reshape(u, 2, 1, nf) .* reshape(u, 1, 2, nf), 4, 1, nf);
+u4 = u2 .* reshape(u2, 1, 4, nf);
+v2 = reshape(reshape(v, 2, 1, nf) .* reshape(v, 1, 2, nf), 4, 1, nf);
+v4 = v2 .* reshape(v2, 1, 4, nf);
+T = eye(4) - 0.999 * (u4 + v4);
+areaWeightedT = repmat(reshape(areas, 1, 1, nf) .* T, 1, 1, 1, 3) / 3;
+faceBaseIdx = 4 * (reshape(faces, 1, 1, nf, 3) - 1);
+MT_I = repmat(faceBaseIdx + [1;2;3;4], 1, 4, 1, 1);
+MT_J = repmat(faceBaseIdx + [1 2 3 4], 4, 1, 1, 1);
+MT = sparse(MT_I(:), MT_J(:), areaWeightedT(:), 4 * nv, 4 * nv);
 
-faceEdgeTNIdx = [2 * face2edge - 1, 2 * face2edge].';
-crI = repmat(reshape(faceEdgeTNIdx, 6, 1, nf), 1, 6, 1);
-crJ = repmat(reshape(faceEdgeTNIdx, 1, 6, nf), 6, 1, 1);
-CR = sparse(crI(:), crJ(:), crTNxTN(:), 2 * ne, 2 * ne);
-
-% Crouzeix-Raviart mass matrix
-crMij = (areas ./ 3) .* repmat((faceEdgeLengths).^(-2), 2, 1, 1) .* eye(6);
-Mcr = sparse(crI(:), crJ(:), crMij(:), 2 * ne, 2 * ne);
-
-% Differential matrix
-hatGrad = (faceEdgeLengths ./ 6) .* faceEdgeNormals;
-hatGrad = hatGrad([2 3 1], :, :);
-
-crTNForm = [faceEdgeTangents ./ faceEdgeLengths; faceEdgeNormals ./ faceEdgeLengths] .* crOrientation;
-
-crDij = batchop('mult', crTNForm, hatGrad, 'N', 'T');
-crDI = repmat(reshape(faceEdgeTNIdx, 6, 1, nf), 1, 3, 1);
-crDJ = repmat(reshape(faces.', 1, 3, nf), 6, 1, 1);
-Dcr = sparse(crDI(:), crDJ(:), crDij(:), 2 * ne, nv);
+% % Express in local frame
+% faceEdgeTangents = faceEdgeTangents ./ z(:, 1);
+% faceEdgeNormals = faceEdgeNormals ./ z(:, 1);
+% 
+% faceEdgeLengths = reshape(faceEdgeLengths.', 3, 1, nf);
+% faceEdgeTangents = permute(cat(3, real(faceEdgeTangents), imag(faceEdgeTangents)), [2 3 1]);
+% faceEdgeNormals = permute(cat(3, real(faceEdgeNormals), imag(faceEdgeNormals)), [2 3 1]);
+% 
+% % Crouzeix-Raviart Frame-Dirichlet matrix
+% % Isotropic Part
+% crOrientation = repmat(reshape(faceOrientation.', 3, 1, nf), 2, 1, 1);
+% crTGrad = reshape(reshape(faceEdgeTangents, 3, 2, 1, nf) .* reshape(faceEdgeNormals, 3, 1, 2, nf), 3, 4, nf);
+% crNGrad = reshape(reshape(faceEdgeNormals, 3, 2, 1, nf) .* reshape(faceEdgeNormals, 3, 1, 2, nf), 3, 4, nf);
+% crTNGrad = [crTGrad; crNGrad];
+% crTNGrad = crTNGrad .* crOrientation;
+% 
+% % Anisotropic Part
+% crTGradContracted = faceEdgeTangents .* faceEdgeNormals;
+% crNGradContracted = faceEdgeNormals .* faceEdgeNormals;
+% crTNGradContracted = [crTGradContracted; crNGradContracted];
+% crTNGradContracted = crTNGradContracted .* crOrientation;
+% 
+% areas = reshape(areas, 1, 1, nf);
+% crTNxTN = (batchop('mult', crTNGrad, crTNGrad, 'N', 'T') ...
+%          - 0.999*batchop('mult', crTNGradContracted, crTNGradContracted, 'N', 'T')) ./ areas;
+% 
+% faceEdgeTNIdx = [2 * face2edge - 1, 2 * face2edge].';
+% crI = repmat(reshape(faceEdgeTNIdx, 6, 1, nf), 1, 6, 1);
+% crJ = repmat(reshape(faceEdgeTNIdx, 1, 6, nf), 6, 1, 1);
+% CR = sparse(crI(:), crJ(:), crTNxTN(:), 2 * ne, 2 * ne);
+% 
+% % Crouzeix-Raviart mass matrix
+% crMij = (areas ./ 3) .* repmat((faceEdgeLengths).^(-2), 2, 1, 1) .* eye(6);
+% Mcr = sparse(crI(:), crJ(:), crMij(:), 2 * ne, 2 * ne);
+% 
+% % Differential matrix
+% hatGrad = (faceEdgeLengths ./ 6) .* faceEdgeNormals;
+% hatGrad = hatGrad([2 3 1], :, :);
+% 
+% crTNForm = [faceEdgeTangents ./ faceEdgeLengths; faceEdgeNormals ./ faceEdgeLengths] .* crOrientation;
+% 
+% crDij = batchop('mult', crTNForm, hatGrad, 'N', 'T');
+% crDI = repmat(reshape(faceEdgeTNIdx, 6, 1, nf), 1, 3, 1);
+% crDJ = repmat(reshape(faces.', 1, 3, nf), 6, 1, 1);
+% Dcr = sparse(crDI(:), crDJ(:), crDij(:), 2 * ne, nv);
 
 %% Impose 0-Neumann boundary conditions
 
+
+faceEdgeLengths = reshape(faceEdgeLengths.', 3, 1, nf);
 [bdryFaceIdx, ~] = find(B.');
 bdryFaces = faces(bdryFaceIdx, :);
 [bdryFaceEdgeIdx, ~] = find((bdryEdgeIdx == face2edge(bdryFaceIdx, :)).');
@@ -151,11 +189,13 @@ bdryNeighborCount = sum(bdryBasis ~= 0, 2);
 bdryBasis = bdryBasis(:, bdryNeighborCount == 1 | bdryNeighborCount > 2);
 
 %% Compute eigenfunctions
-MinvDcr = Mcr \ Dcr;
-A = MinvDcr.' * CR * MinvDcr;
-A = bdryBasis.' * A * bdryBasis;
+DAG = D' * A * G;
+O = DAG' * (M4 \ MT / M4) * DAG;
+% MinvDcr = Mcr \ Dcr;
+% A = MinvDcr.' * CR * MinvDcr;
+O = bdryBasis.' * O * bdryBasis;
 M = bdryBasis.' * star0 * bdryBasis;
-[V, lambda] = eigs(A + 1e-6 * M, M, 200, 'smallestabs');%, 'IsSymmetricDefinite', true);
+[V, lambda] = eigs(O + 1e-6 * M, M, 200, 'smallestabs');%, 'IsSymmetricDefinite', true);
 V = bdryBasis * V;
 % [W, ~] = eigs(L, star0, 100, 'smallestabs');
 figure;
