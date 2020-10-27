@@ -8,6 +8,7 @@ bdryIdx = freeBoundary(tri);
 nb = size(bdryIdx, 1);
 nv = size(verts, 1);
 nf = size(faces, 1);
+intIdx = setdiff(1:nv, bdryIdx);
 
 faceCenters = (1/3) * squeeze(sum(reshape(verts(faces, :), nf, 3, 3), 2));
 
@@ -118,6 +119,11 @@ MT_I = repmat(faceBaseIdx + [1;2;3;4], 1, 4, 1, 1);
 MT_J = repmat(faceBaseIdx + [1 2 3 4], 4, 1, 1, 1);
 MT = sparse(MT_I(:), MT_J(:), areaWeightedT(:), 4 * nv, 4 * nv);
 
+% Only take interior nodes
+D = D(:, 4 * intIdx + (-3:0).');
+M4 = M4(4 * intIdx + (-3:0).', 4 * intIdx + (-3:0).');
+MT = MT(4 * intIdx + (-3:0).', 4 * intIdx + (-3:0).');
+
 % % Express in local frame
 % faceEdgeTangents = faceEdgeTangents ./ z(:, 1);
 % faceEdgeNormals = faceEdgeNormals ./ z(:, 1);
@@ -180,13 +186,17 @@ bdryFaceVertAngles = reshape(bdryFaceVertAngles(bdryFaceShift), nb, 3);
 bdryFaceLengths = squeeze(faceEdgeLengths(:, :, bdryFaceIdx)).';
 bdryFaceLengths = reshape(bdryFaceLengths(bdryFaceShift), nb, 3);
 
-bdryBasis = speye(nv);
 % vk = bdryFaces(:, 1);
-bdryBasis = bdryBasis + sparse(bdryFaces(:, [1 1]), bdryFaces(:, [3 2]), cos(bdryFaceVertAngles(:, [2 3])) .* bdryFaceLengths(:, [1 3]) ./ bdryFaceLengths(:, 2), nv, nv);
+bdryBasis = sparse(bdryFaces(:, [1 1]), bdryFaces(:, [3 2]), cos(bdryFaceVertAngles(:, [2 3])) .* bdryFaceLengths(:, [1 3]) ./ bdryFaceLengths(:, 2), nv, nv);
 % allButVk = setdiff((1:nv).', vk);
 % bdryBasis = bdryBasis(:, allButVk);
 bdryNeighborCount = sum(bdryBasis ~= 0, 2);
-bdryBasis = bdryBasis(:, bdryNeighborCount == 1 | bdryNeighborCount > 2);
+constrainedNodes = bdryNeighborCount == 2;
+bdryBasis(~constrainedNodes, :) = 0;
+otherIdent = speye(nv);
+otherIdent(constrainedNodes, :) = 0;
+bdryBasis = bdryBasis + otherIdent;
+bdryBasis = bdryBasis(:, ~constrainedNodes);
 
 %% Compute eigenfunctions
 DAG = D' * A * G;
@@ -200,10 +210,11 @@ V = bdryBasis * V;
 % [W, ~] = eigs(L, star0, 100, 'smallestabs');
 figure;
 % k = 200;
+[cmin, cmax] = bounds(V(:, 1:64), 'all');
 for k = 1:64
     subplot(8, 8, k);
 %     trisurf(faces, verts(:, 1), verts(:, 2), verts(:, 3), W(:, k), 'EdgeColor', 'none'); view(2); axis image off; shading interp;
-    trisurf(faces, verts(:, 1), verts(:, 2), verts(:, 3), V(:, k), 'EdgeColor', 'none'); view(2); axis image off; shading interp; colormap viridis;
+    trisurf(faces, verts(:, 1), verts(:, 2), verts(:, 3), V(:, k), 'EdgeColor', 'none'); view(2); axis image off; shading interp; colormap viridis; caxis([cmin cmax]);
 end
 
 
