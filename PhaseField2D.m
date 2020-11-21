@@ -1,7 +1,14 @@
-function PhaseField2D(verts, faces)
+function [V, lambda] = PhaseField2D(verts, faces, ellipticity, singPenalty)
+
+if nargin < 3 || isempty(ellipticity)
+    ellipticity = 0.01;
+end
+
+if nargin < 4 || isempty(singPenalty)
+    singPenalty = 0;
+end
 
 %% Load mesh. Note: triangles must be oriented consistently
-% [verts, faces] = load_mesh('~/Downloads/clover.obj');
 faces = flip_ears(verts, faces);
 tri = triangulation(faces, verts);
 bdryIdx = freeBoundary(tri);
@@ -47,8 +54,8 @@ Ldual = d1 * star1dual * d1.';
 [bdryForward, bdryEdgeIdxF] = ismember(bdryIdx, edges, 'rows');
 [bdryBackward, bdryEdgeIdxB] = ismember(fliplr(bdryIdx), edges, 'rows');
 bdryEdgeIdx = bdryEdgeIdxF + bdryEdgeIdxB;
-B = abs(d1.');
-B = B(bdryEdgeIdx, :);
+Bij = abs(d1.');
+Bij = Bij(bdryEdgeIdx, :);
 % B = B * star2;
 
 %% Compute cross field boundary conditions
@@ -59,23 +66,24 @@ bdryEdgeCenters = 0.5 * (verts(bdryIdx(:, 2), :) + verts(bdryIdx(:, 1), :));
 zb = (bdryNormals(:, 1) + 1i.*bdryNormals(:, 2)).^4;
 
 %% Compute cross field by MBO
-z4 = [Ldual B.'; B zeros(size(B, 1))] \ [zeros(nf, 1); zb];
+z4 = [Ldual Bij.'; Bij zeros(size(Bij, 1))] \ [zeros(nf, 1); zb];
 z4 = z4(1:nf);
 z4 = z4 ./ abs(z4);
 
 lambda = eigs(Ldual, star2, 2, 'smallestabs');
-tau = 2/lambda(2);
+tau = 0.5/lambda(2);
 Ambo = star2 + tau * Ldual;
 for j = 1:10
-    z4 = [Ambo, B.'; B zeros(size(B, 1))] \ [star2 * z4; zb];
+    z4 = [Ambo, Bij.'; Bij zeros(size(Bij, 1))] \ [star2 * z4; zb];
     z4 = z4(1:nf);
-    z4 = z4 ./ abs(z4);
+    crossNorm = abs(z4);
+    z4 = z4 ./ crossNorm;
 end
 
 z = (z4.^(1/4)) .* [1 1i -1 -1i];
 crossField = cat(3, real(z), imag(z), zeros(size(z)));
 
-% figure; FancyQuiver(repmat(faceCenters, 4, 1), reshape(crossField, nf * 4, 3), inferno, 0); view(2); axis image off;
+% figure; FancyQuiver(repmat(faceCenters, 4, 1), reshape((crossNorm + 1).^(-1) .* crossField, nf * 4, 3), inferno, 0); view(2); axis image off;
 
 %% Construct phase field operators
 faceEdgeVecs = reshape(verts(faceOrientedEdges(:, 2), :) - verts(faceOrientedEdges(:, 1), :), nf, 3, 3);
@@ -112,109 +120,46 @@ u2 = reshape(reshape(u, 2, 1, nf) .* reshape(u, 1, 2, nf), 4, 1, nf);
 u4 = u2 .* reshape(u2, 1, 4, nf);
 v2 = reshape(reshape(v, 2, 1, nf) .* reshape(v, 1, 2, nf), 4, 1, nf);
 v4 = v2 .* reshape(v2, 1, 4, nf);
-T = eye(4) - 0.999 * (u4 + v4);
-areaWeightedT = repmat(reshape(areas, 1, 1, nf) .* T, 1, 1, 1, 3) / 3;
+Tij = eye(4) - (1 - ellipticity) * (u4 + v4);
+% Tij = reshape((crossNorm).^(-1), 1, 1, nf) .* Tij;
+areaWeightedT = repmat(reshape(areas, 1, 1, nf) .* Tij, 1, 1, 1, 3) / 3;
 faceBaseIdx = 4 * (reshape(faces, 1, 1, nf, 3) - 1);
 MT_I = repmat(faceBaseIdx + [1;2;3;4], 1, 4, 1, 1);
 MT_J = repmat(faceBaseIdx + [1 2 3 4], 4, 1, 1, 1);
 MT = sparse(MT_I(:), MT_J(:), areaWeightedT(:), 4 * nv, 4 * nv);
-
-% Only take interior nodes
-D = D(:, 4 * intIdx + (-3:0).');
-M4 = M4(4 * intIdx + (-3:0).', 4 * intIdx + (-3:0).');
-MT = MT(4 * intIdx + (-3:0).', 4 * intIdx + (-3:0).');
-
-% % Express in local frame
-% faceEdgeTangents = faceEdgeTangents ./ z(:, 1);
-% faceEdgeNormals = faceEdgeNormals ./ z(:, 1);
-% 
-% faceEdgeLengths = reshape(faceEdgeLengths.', 3, 1, nf);
-% faceEdgeTangents = permute(cat(3, real(faceEdgeTangents), imag(faceEdgeTangents)), [2 3 1]);
-% faceEdgeNormals = permute(cat(3, real(faceEdgeNormals), imag(faceEdgeNormals)), [2 3 1]);
-% 
-% % Crouzeix-Raviart Frame-Dirichlet matrix
-% % Isotropic Part
-% crOrientation = repmat(reshape(faceOrientation.', 3, 1, nf), 2, 1, 1);
-% crTGrad = reshape(reshape(faceEdgeTangents, 3, 2, 1, nf) .* reshape(faceEdgeNormals, 3, 1, 2, nf), 3, 4, nf);
-% crNGrad = reshape(reshape(faceEdgeNormals, 3, 2, 1, nf) .* reshape(faceEdgeNormals, 3, 1, 2, nf), 3, 4, nf);
-% crTNGrad = [crTGrad; crNGrad];
-% crTNGrad = crTNGrad .* crOrientation;
-% 
-% % Anisotropic Part
-% crTGradContracted = faceEdgeTangents .* faceEdgeNormals;
-% crNGradContracted = faceEdgeNormals .* faceEdgeNormals;
-% crTNGradContracted = [crTGradContracted; crNGradContracted];
-% crTNGradContracted = crTNGradContracted .* crOrientation;
-% 
-% areas = reshape(areas, 1, 1, nf);
-% crTNxTN = (batchop('mult', crTNGrad, crTNGrad, 'N', 'T') ...
-%          - 0.999*batchop('mult', crTNGradContracted, crTNGradContracted, 'N', 'T')) ./ areas;
-% 
-% faceEdgeTNIdx = [2 * face2edge - 1, 2 * face2edge].';
-% crI = repmat(reshape(faceEdgeTNIdx, 6, 1, nf), 1, 6, 1);
-% crJ = repmat(reshape(faceEdgeTNIdx, 1, 6, nf), 6, 1, 1);
-% CR = sparse(crI(:), crJ(:), crTNxTN(:), 2 * ne, 2 * ne);
-% 
-% % Crouzeix-Raviart mass matrix
-% crMij = (areas ./ 3) .* repmat((faceEdgeLengths).^(-2), 2, 1, 1) .* eye(6);
-% Mcr = sparse(crI(:), crJ(:), crMij(:), 2 * ne, 2 * ne);
-% 
-% % Differential matrix
-% hatGrad = (faceEdgeLengths ./ 6) .* faceEdgeNormals;
-% hatGrad = hatGrad([2 3 1], :, :);
-% 
-% crTNForm = [faceEdgeTangents ./ faceEdgeLengths; faceEdgeNormals ./ faceEdgeLengths] .* crOrientation;
-% 
-% crDij = batchop('mult', crTNForm, hatGrad, 'N', 'T');
-% crDI = repmat(reshape(faceEdgeTNIdx, 6, 1, nf), 1, 3, 1);
-% crDJ = repmat(reshape(faces.', 1, 3, nf), 6, 1, 1);
-% Dcr = sparse(crDI(:), crDJ(:), crDij(:), 2 * ne, nv);
-
-%% Impose 0-Neumann boundary conditions
+T = M4 \ MT;
 
 
-faceEdgeLengths = reshape(faceEdgeLengths.', 3, 1, nf);
-[bdryFaceIdx, ~] = find(B.');
-bdryFaces = faces(bdryFaceIdx, :);
-[bdryFaceEdgeIdx, ~] = find((bdryEdgeIdx == face2edge(bdryFaceIdx, :)).');
-bdryFaceEdgeIdx = reshape(bdryFaceEdgeIdx, [], 1);
-bdryFaceShift = mod(bdryFaceEdgeIdx + (-2:0), 3) + 1;
-bdryFaceShift = sub2ind(size(bdryFaces), repmat((1:nb).', 1, 3), bdryFaceShift);
-bdryFaces = reshape(bdryFaces(bdryFaceShift), nb, 3);
-bdryFaceVertAngles = vertAngles(bdryFaceIdx, :);
-bdryFaceVertAngles = reshape(bdryFaceVertAngles(bdryFaceShift), nb, 3);
-bdryFaceLengths = squeeze(faceEdgeLengths(:, :, bdryFaceIdx)).';
-bdryFaceLengths = reshape(bdryFaceLengths(bdryFaceShift), nb, 3);
+%% Impose 0-Neumann Boundary Conditions (weakly)
+bdryVtxIdx = unique(bdryIdx);
+bdryVtxNormals = accumarray([repmat(bdryIdx(:, 1), 3, 1) repelem((1:3).', nb)], bdryNormals(:), [nv 3]) ...
+               + accumarray([repmat(bdryIdx(:, 2), 3, 1) repelem((1:3).', nb)], bdryNormals(:), [nv 3]);
+bdryVtxNormals = bdryVtxNormals(bdryVtxIdx, 1:2).';
+bdryVtxTangents = [0 -1; 1 0] * bdryVtxNormals;
 
-% vk = bdryFaces(:, 1);
-bdryBasis = sparse(bdryFaces(:, [1 1]), bdryFaces(:, [3 2]), cos(bdryFaceVertAngles(:, [2 3])) .* bdryFaceLengths(:, [1 3]) ./ bdryFaceLengths(:, 2), nv, nv);
-% allButVk = setdiff((1:nv).', vk);
-% bdryBasis = bdryBasis(:, allButVk);
-bdryNeighborCount = sum(bdryBasis ~= 0, 2);
-constrainedNodes = bdryNeighborCount == 2;
-bdryBasis(~constrainedNodes, :) = 0;
-otherIdent = speye(nv);
-otherIdent(constrainedNodes, :) = 0;
-bdryBasis = bdryBasis + otherIdent;
-bdryBasis = bdryBasis(:, ~constrainedNodes);
+nt = batchop('mult', reshape(bdryVtxNormals, 2, 1, nb), reshape(bdryVtxTangents, 1, 2, nb));
+Bij = [reshape(nt, 1, 4, nb); reshape(multitransp(nt), 1, 4, nb)];
+
+Bi = repmat(reshape(1:2*nb, 2, 1, nb), 1, 4, 1);
+Bj = repmat(reshape((4 * bdryVtxIdx + (-3:0)).', 1, 4, nb), 2, 1, 1);
+B = sparse(Bi(:), Bj(:), Bij(:), 2 * nb, 4 * nv);
+
+Tadjusted = T - T * (B' * ((B * T * B') \ (B * T)));
+TM = Tadjusted / M4;
+
+%% Penalize gradient at singularities
+S = G' * (repelem((crossNorm + 0.1).^(-1), 2, 1) .* A) * G;
 
 %% Compute eigenfunctions
 DAG = D' * A * G;
-O = DAG' * (M4 \ MT / M4) * DAG;
-% MinvDcr = Mcr \ Dcr;
-% A = MinvDcr.' * CR * MinvDcr;
-O = bdryBasis.' * O * bdryBasis;
-M = bdryBasis.' * star0 * bdryBasis;
+O = DAG' * TM * DAG + singPenalty * S;
+M = star0lump;
 [V, lambda] = eigs(O + 1e-6 * M, M, 200, 'smallestabs');%, 'IsSymmetricDefinite', true);
-V = bdryBasis * V;
-% [W, ~] = eigs(L, star0, 100, 'smallestabs');
 figure;
-% k = 200;
-[cmin, cmax] = bounds(V(:, 1:64), 'all');
+% [cmin, cmax] = bounds(V(:, 1:64), 'all');
 for k = 1:64
     subplot(8, 8, k);
-%     trisurf(faces, verts(:, 1), verts(:, 2), verts(:, 3), W(:, k), 'EdgeColor', 'none'); view(2); axis image off; shading interp;
-    trisurf(faces, verts(:, 1), verts(:, 2), verts(:, 3), V(:, k), 'EdgeColor', 'none'); view(2); axis image off; shading interp; colormap viridis; caxis([cmin cmax]);
+    trisurf(faces, verts(:, 1), verts(:, 2), verts(:, 3), V(:, k), 'EdgeColor', 'none'); view(2); axis image off; shading interp; colormap viridis; %caxis([cmin cmax]);
 end
 
 
