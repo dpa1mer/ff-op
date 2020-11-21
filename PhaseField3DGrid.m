@@ -1,4 +1,4 @@
-function V = PhaseField(grid, q)
+function V = PhaseField3DGrid(grid, q)
 
 s = sqrt(2);
 
@@ -8,7 +8,7 @@ gridHess = [grid.Dxx; grid.Dyy; grid.Dzz; s * grid.Dyz; s * grid.Dxz; s * grid.D
 ii = repmat(grid.nv * (0:5).', 1, 6, grid.nv) + reshape(1:grid.nv, 1, 1, grid.nv);
 jj = repmat(grid.nv * (0:5), 6, 1, grid.nv) + reshape(1:grid.nv, 1, 1, grid.nv);
 Orthotropic = gridHess' * sparse(ii(:), jj(:), tens(:), 6 * grid.nv, 6 * grid.nv) * gridHess;
-[V, D] = eigs(Orthotropic, 32, 'smallestabs');
+[V, D] = eigs(Orthotropic + 1e-6 * speye(grid.nv), 200, 'smallestabs');
 
 fig = figure; colormap inferno;
 tiledlayout(5, 5);
