@@ -1,4 +1,4 @@
-function [V, lambda] = PhaseField2D(verts, faces, ellipticity, singPenalty)
+function [Op, M] = PhaseField2D(verts, faces, ellipticity, singPenalty)
 
 if nargin < 3 || isempty(ellipticity)
     ellipticity = 0.01;
@@ -152,15 +152,15 @@ S = G' * (repelem((crossNorm + 0.1).^(-1), 2, 1) .* A) * G;
 
 %% Compute eigenfunctions
 DAG = D' * A * G;
-O = DAG' * TM * DAG + singPenalty * S;
+Op = DAG' * TM * DAG + singPenalty * S;
 M = star0lump;
-[V, lambda] = eigs(O + 1e-6 * M, M, 200, 'smallestabs');%, 'IsSymmetricDefinite', true);
-figure;
-% [cmin, cmax] = bounds(V(:, 1:64), 'all');
-for k = 1:64
-    subplot(8, 8, k);
-    trisurf(faces, verts(:, 1), verts(:, 2), verts(:, 3), V(:, k), 'EdgeColor', 'none'); view(2); axis image off; shading interp; colormap viridis; %caxis([cmin cmax]);
-end
+% [V, lambda] = eigs(O + 1e-6 * M, M, 200, 'smallestabs');%, 'IsSymmetricDefinite', true);
+% figure;
+% % [cmin, cmax] = bounds(V(:, 1:64), 'all');
+% for k = 1:64
+%     subplot(8, 8, k);
+%     trisurf(faces, verts(:, 1), verts(:, 2), verts(:, 3), V(:, k), 'EdgeColor', 'none'); view(2); axis image off; shading interp; colormap viridis; %caxis([cmin cmax]);
+% end
 
 
 

@@ -1,4 +1,4 @@
-function [V, lambda] = PhaseField3D(meshData, ellipticity)
+function [Op, star0lump] = PhaseField3D(meshData, ellipticity)
 
 if nargin < 2
     ellipticity = 0.01;
@@ -125,18 +125,18 @@ TM = T / M9;
 
 %% Compute eigenfunctions
 DVG = D' * V * G;
-O = DVG' * TM * DVG;
+Op = DVG' * TM * DVG;
 % O = bdryBasis.' * O * bdryBasis;
 % M = bdryBasis.' * star0 * bdryBasis;
-[V, lambda] = eigs(O + star0lump, star0lump, 200, 'smallestabs');%, 'IsSymmetricDefinite', true);
-% V = bdryBasis * V;
-% [W, ~] = eigs(L, star0, 100, 'smallestabs');
-figure;
-% k = 200;
-% [cmin, cmax] = bounds(V(:, 1:64), 'all');
-for k = 1:64
-    subplot(8, 8, k);
-    trisurf(meshData.bdry, V(:, k)); view(3); axis image vis3d off; shading interp; colormap viridis;
-end
+% [V, lambda] = eigs(Op + star0lump, star0lump, 200, 'smallestabs');%, 'IsSymmetricDefinite', true);
+% % V = bdryBasis * V;
+% % [W, ~] = eigs(L, star0, 100, 'smallestabs');
+% figure;
+% % k = 200;
+% % [cmin, cmax] = bounds(V(:, 1:64), 'all');
+% for k = 1:64
+%     subplot(8, 8, k);
+%     trisurf(meshData.bdry, V(:, k)); view(3); axis image vis3d off; shading interp; colormap viridis;
+% end
 
 end
