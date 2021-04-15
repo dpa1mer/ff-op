@@ -65,18 +65,18 @@ M9 = kron(star0lump, speye(9));
 % weightedT = reshape(full(diag(star0lump)), 1, 1, nv) .* Tij;
 
 %% Impose 0-Neumann Boundary Conditions (weakly)
-% bdryNormals = reshape(meshData.bdryNormals, 3, 1, nb);
-% nn = batchop('mult', bdryNormals, bdryNormals, 'N', 'T');
-% nnn = batchop('mult', bdryNormals, reshape(nn, 1, 9, nb));
-% multN = [multitransp(bdryNormals) zeros(1, 6, nb);
-%          zeros(1, 3, nb) multitransp(bdryNormals) zeros(1, 3, nb);
-%          zeros(1, 6, nb) multitransp(bdryNormals)];
-% multNt = multitransp(reshape(multN, 9, 3, nb));
-% Bij = [multN - nnn; multNt - nnn];
-% BT = batchop('mult', Bij, Tij(:,:,bdryIdx));
-% BTB = batchop('mult', BT, Bij, 'N', 'T');
-% BTBi = batchop('pinv', BTB, 5);
-% Tij(:,:,bdryIdx) = Tij(:,:,bdryIdx) - batchop('mult', batchop('mult', BT, BTBi, 'T', 'N'), BT, 'N', 'N');
+bdryNormals = reshape(meshData.bdryNormals, 3, 1, nb);
+nn = batchop('mult', bdryNormals, bdryNormals, 'N', 'T');
+nnn = batchop('mult', bdryNormals, reshape(nn, 1, 9, nb));
+multN = [multitransp(bdryNormals) zeros(1, 6, nb);
+         zeros(1, 3, nb) multitransp(bdryNormals) zeros(1, 3, nb);
+         zeros(1, 6, nb) multitransp(bdryNormals)];
+multNt = multitransp(reshape(multN, 9, 3, nb));
+Bij = [multN - nnn; multNt - nnn];
+BT = batchop('mult', Bij, Tij(:,:,bdryIdx));
+BTB = batchop('mult', BT, Bij, 'N', 'T');
+BTBi = batchop('pinv', BTB, 5);
+Tij(:,:,bdryIdx) = Tij(:,:,bdryIdx) - batchop('mult', batchop('mult', BT, BTBi, 'T', 'N'), BT, 'N', 'N');
 
 % Bi = repmat(reshape(1:6*nb, 6, 1, nb), 1, 9, 1);
 % Bj = repmat(reshape((9 * bdryIdx + (-8:0)).', 1, 9, nb), 6, 1, 1);
