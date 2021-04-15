@@ -1,9 +1,11 @@
 #include "mex.hpp"
 #include "mexAdapter.hpp"
 
+#define TTK_CELL_ARRAY_NEW
 #include "PersistenceDiagram.h"
 #include "TopologicalSimplification.h"
 #include "MorseSmaleComplex.h"
+#include "MorseSmaleQuadrangulation.h"
 
 #define ML_ERR(errMsg) matlabPtr->feval(u"error", 0, std::vector<matlab::data::Array>({ factory.createScalar(errMsg) }))
 #define ML_PRINT(msg) matlabPtr->feval(u"fprintf", 0, std::vector<matlab::data::Array>({ factory.createScalar(msg) }))
@@ -46,7 +48,7 @@ public:
     void checkArguments(matlab::mex::ArgumentList inputs) {
         std::shared_ptr<MLEngine> matlabPtr;
 
-        if (inputs.size() < 4) ML_ERR("Must provide four inputs.");
+        if (inputs.size() < 5) ML_ERR("Must provide five inputs.");
         
         if (inputs[0].getType() != MLArrayType::DOUBLE
          || inputs[1].getType() != MLArrayType::DOUBLE
@@ -56,6 +58,7 @@ public:
         }
 
         if (inputs[3].getNumberOfElements() != 1) ML_ERR("Minimum persistence must be a scalar.");
+        if (inputs[4].getNumberOfElements() != 1) ML_ERR("Dualization must be a scalar boolean.");
     }
 
     void operator()(matlab::mex::ArgumentList outputs, matlab::mex::ArgumentList inputs) {
@@ -69,6 +72,7 @@ public:
         MLArray scalar = std::move(inputs[2]);
 
         double minPersistence = inputs[3][0];
+        bool dualize = inputs[4][0];
 
         std::vector<size_t> dimVerts = verts.getDimensions();
         if (dimVerts.size() != 2) ML_ERR("Inputs must be matrices.");
@@ -82,19 +86,12 @@ public:
         if (d != 2 && d != 3) ML_ERR("Simplices must be triangles or tetrahedra.");
         size_t nc = dimSimplices[0];
 
-        // order array: every vertex sorted according to the scalar field
-        std::vector<ttk::SimplexId> perm(nv);
-        std::iota(perm.begin(), perm.end(), 0);
-        std::stable_sort(perm.begin(), perm.end(),
-            [&scalar] (size_t i1, size_t i2) {return scalar[i1] < scalar[i2];});
-
-        std::vector<ttk::SimplexId> order(nv);
-        for (size_t i = 0; i < nv; ++i) {
-            order[perm[i]] = i;
-        }
-
         MLPtr vertsPtr = verts.release();
         MLPtr scalarPtr = scalar.release();
+        
+        // order array: every vertex sorted according to the scalar field
+        std::vector<ttk::SimplexId> order(nv);
+        ttk::preconditionOrderArray(nv, scalarPtr.get(), order.data());
 
         // Copy the data into TTK's format
         std::ostringstream stream;
@@ -103,53 +100,45 @@ public:
         ttk::Triangulation triangulation;
         triangulation.setInputPoints(nv, vertsPtr.get(), true);
 
-        std::vector<ttk::LongSimplexId> inputCells;
+        std::vector<ttk::LongSimplexId> inputCellsConnectivity, inputCellsOffset;
+        inputCellsOffset.push_back(0);
         for (int i = 0; i < nc; ++i) {
-            inputCells.push_back(d + 1); // Size of each simplex
             for (int j = 0; j < d + 1; ++j) {
                 // Convert MATLAB 1-offset to 0-offset
-                inputCells.push_back(static_cast<ttk::LongSimplexId>(simplices[i][j]) - 1);
+                inputCellsConnectivity.push_back(static_cast<ttk::LongSimplexId>(simplices[i][j]) - 1);
             }
+            inputCellsOffset.push_back(inputCellsConnectivity.size());
         }
-        triangulation.setInputCells(nc, inputCells.data());
+        triangulation.setInputCells(nc, inputCellsConnectivity.data(), inputCellsOffset.data());
 
 
-        // Topological simplification
-        // Following example code from https://github.com/topology-tool-kit/ttk/blob/dev/examples/c%2B%2B/main.cpp
-        ML_PRINT("Simplifying Morse function...\n");
-        using PersistencePair = std::tuple<ttk::SimplexId, ttk::CriticalType, ttk::SimplexId, ttk::CriticalType, double, ttk::SimplexId>;
-        std::vector<PersistencePair> diagramOutput;
-        std::vector< std::tuple<ttk::dcg::Cell, ttk::dcg::Cell> > dmtPairs;
-        ttk::PersistenceDiagram diagram;
-        diagram.setupTriangulation(&triangulation);
-        diagram.setInputScalars(scalarPtr.get());
-        diagram.setInputOffsets(order.data());
-        diagram.setDMTPairs(&dmtPairs);
-        diagram.setOutputCTDiagram(&diagramOutput);
-        diagram.execute<double, ttk::SimplexId>();
-
-        // Select critical point pairs with sufficient persistence
-        std::vector<ttk::SimplexId> selectedCriticalPoints;
-        for (int i = 0; i < diagramOutput.size(); ++i) {
-            if (std::get<4>(diagramOutput[i]) > minPersistence) {
-                selectedCriticalPoints.push_back(std::get<0>(diagramOutput[i]));
-                selectedCriticalPoints.push_back(std::get<2>(diagramOutput[i]));
-            }
-        }
-
-        // Modify the scalar function to eliminate spurious critical points
-        std::vector<double> simplifiedScalar(nv);
-        std::vector<ttk::SimplexId> simplifiedOrder = order;
-        ttk::TopologicalSimplification simplification;
-        simplification.setupTriangulation(&triangulation);
-        simplification.setVertexNumber(nv);
-        simplification.setConstraintNumber(selectedCriticalPoints.size());
-        simplification.setVertexIdentifierScalarFieldPointer(selectedCriticalPoints.data());
-        simplification.setInputScalarFieldPointer(scalarPtr.get());
-        simplification.setOutputScalarFieldPointer(simplifiedScalar.data());
-        simplification.setInputOffsetScalarFieldPointer(order.data());
-        simplification.setOutputOffsetScalarFieldPointer(simplifiedOrder.data());
-        simplification.execute<double, ttk::SimplexId>();
+//         // Topological simplification
+//         // Following example code from https://github.com/topology-tool-kit/ttk/blob/dev/examples/c%2B%2B/main.cpp
+//         ML_PRINT("Simplifying Morse function...\n");
+//         std::vector<ttk::PersistencePair> diagramOutput;
+//         ttk::PersistenceDiagram diagram;
+//         diagram.preconditionTriangulation(&triangulation);
+//         diagram.execute(diagramOutput, scalarPtr.get(), order.data(), &triangulation);
+// 
+//         // Select critical point pairs with sufficient persistence
+//         std::vector<ttk::SimplexId> selectedCriticalPoints;
+//         for (int i = 0; i < diagramOutput.size(); ++i) {
+//             if (diagramOutput[i].persistence > minPersistence) {
+//                 selectedCriticalPoints.push_back(diagramOutput[i].birth);
+//                 selectedCriticalPoints.push_back(diagramOutput[i].death);
+//             }
+//         }
+// 
+//         // Modify the scalar function to eliminate spurious critical points
+//         std::vector<double> simplifiedScalar(nv);
+//         std::vector<ttk::SimplexId> simplifiedOrder = order;
+//         ttk::TopologicalSimplification simplification;
+//         simplification.preconditionTriangulation(&triangulation);
+//         simplification.execute(
+//                 scalarPtr.get(), simplifiedScalar.data(),
+//                 selectedCriticalPoints.data(),
+//                 order.data(), simplifiedOrder.data(),
+//                 selectedCriticalPoints.size(), triangulation);
 
 
         // Compute the Morse-Smale Complex
@@ -174,7 +163,7 @@ public:
         std::vector<char> separatrices1_points_cellDimensions;
         std::vector<ttk::SimplexId> separatrices1_points_cellIds;
         ttk::SimplexId separatrices1_numberOfCells{};
-        std::vector<ttk::SimplexId> separatrices1_cells_connectivity;
+        std::vector<long long> separatrices1_cells_connectivity;
         std::vector<ttk::SimplexId> separatrices1_cells_sourceIds;
         std::vector<ttk::SimplexId> separatrices1_cells_destinationIds;
         std::vector<ttk::SimplexId> separatrices1_cells_separatrixIds;
@@ -189,10 +178,10 @@ public:
                                     descendingSegmentation(nv, -1),
                                     mscSegmentation(nv, -1);
         
-        morseSmaleComplex.setupTriangulation(&triangulation);
-        morseSmaleComplex.setInputScalarField(simplifiedScalar.data());
-        morseSmaleComplex.setInputOffsets(simplifiedOrder.data());
-        morseSmaleComplex.setIterationThreshold(1e8);
+        morseSmaleComplex.preconditionTriangulation(&triangulation);
+        morseSmaleComplex.setInputScalarField(scalarPtr.get());//simplifiedScalar.data());
+        morseSmaleComplex.setInputOffsets(order.data());//simplifiedOrder.data());
+//         morseSmaleComplex.setIterationThreshold(1e8);
         
         morseSmaleComplex.setOutputMorseComplexes(
             ascendingSegmentation.data(),
@@ -217,7 +206,26 @@ public:
             &separatrices1_cells_isOnBoundary);
 
 
-        morseSmaleComplex.execute<double, ttk::SimplexId>();
+        morseSmaleComplex.execute<double>(triangulation);
+
+//         // Morse-Smale Quadrangulation
+//         ML_PRINT("Extracting quadrangulation...\n");
+//         ttk::MorseSmaleQuadrangulation quadrangulator;
+//         quadrangulator.preconditionTriangulation(&triangulation);
+//         quadrangulator.setCriticalPoints(
+//             criticalPoints_numberOfPoints,
+//             criticalPoints_points.data(),
+//             criticalPoints_points_PLVertexIdentifiers.data(),
+//             criticalPoints_points_cellIds.data(),
+//             criticalPoints_points_cellDimensions.data());
+//         quadrangulator.setSeparatrices(
+//             separatrices1_numberOfPoints,
+//             separatrices1_points_cellIds.data(),
+//             separatrices1_points_cellDimensions.data(),
+//             separatrices1_points_smoothingMask.data(),
+//             separatrices1_points.data());
+//         quadrangulator.setDualQuadrangulation(dualize);
+//         quadrangulator.execute(triangulation);
 
         // Pass results back to MATLAB
         MLArray ascending = factory.createArray<double>({nv, 1});
@@ -241,7 +249,9 @@ public:
 
         size_t nSepPts = static_cast<size_t>(separatrices1_numberOfPoints);
         MLArray sepPts = factory.createArray<double>({nSepPts, 3});
+        MLArray sepMask = factory.createArray<double>({nSepPts, 1});
         for (int i = 0; i < nSepPts; ++i) {
+            sepMask[i] = static_cast<double>(separatrices1_points_smoothingMask[i]);
             for (int j = 0; j < 3; ++j) {
                 sepPts[i][j] = static_cast<double>(separatrices1_points[3 * i + j]);
             }
@@ -251,7 +261,7 @@ public:
         MLArray sepCells = factory.createArray<double>({nSepCells, 2});
         for (int i = 0; i < nSepCells; ++i) {
             for (int j = 0; j < 2; ++j) {
-                sepCells[i][j] = static_cast<double>(separatrices1_cells_connectivity[3 * i + j + 1] + 1);
+                sepCells[i][j] = static_cast<double>(separatrices1_cells_connectivity[2 * i + j] + 1);
             }
         }
 
@@ -263,5 +273,24 @@ public:
         outputs[4] = critDims;
         outputs[5] = sepPts;
         outputs[6] = sepCells;
+        outputs[7] = sepMask;
+
+//         size_t nqv = quadrangulator.outputPoints_.size() / 3;
+//         size_t nq = quadrangulator.outputCells_.size() / 5;
+//         MLArray quadVerts = factory.createArray<double>({nqv, 3});
+//         MLArray quadCells = factory.createArray<double>({nq, 4});
+//         for (int i = 0; i < nqv; ++i) {
+//             for (int j = 0; j < 3; ++j) {
+//                 quadVerts[i][j] = static_cast<double>(quadrangulator.outputPoints_[3 * i + j]);
+//             }
+//         }
+// 
+//         for (int i = 0; i < nq; ++i) {
+//             for (int j = 0; j < 4; ++j) {
+//                 quadCells[i][j] = static_cast<double>(quadrangulator.outputCells_[5 * i + j + 1] + 1);
+//             }
+//         }
+//         outputs[0] = quadVerts;
+//         outputs[1] = quadCells;
     }
 };
