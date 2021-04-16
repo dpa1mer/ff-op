@@ -104,7 +104,8 @@ for i=1:nPetals
     oColor1 = (1-petalVerts2Norm).*[8,48,107]/255 + ...
         petalVerts2Norm.*[43,140,190]/255;
     oColor2 = (1-tinyPetalVerts2Norm).*[4,90,141]/255 + ...
-        tinyPetalVerts2Norm.*[78,179,211]/255;
+        tinyPetalVerts2Norm.*[247,252,185]/255;
+        %tinyPetalVerts2Norm.*[78,179,211]/255;
     bc{end+1} = [oColor1; oColor2];
 end
 
