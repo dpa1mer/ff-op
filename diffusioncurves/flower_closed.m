@@ -49,11 +49,15 @@ petalVertsOut = ...
 petalVertsIn = ...
     (5-1e-5)*[0.2*cos(1.8*(thetaHalf-pi/2)+pi/2), sin(thetaHalf).^2] + ...
     [0, 1];
+petalVerts2Norm = petalVertsIn(:,2) - min(petalVertsIn(:,2));
+petalVerts2Norm = petalVerts2Norm / max(petalVerts2Norm);
 tinyPetalVertsOut = ...
     2*[0.2*cos(1.8*(thetaHalf-pi/2)+pi/2), sin(thetaHalf).^2] + [0, 1.1];
 tinyPetalVertsIn = ...
     (2-1e-5)*[0.2*cos(1.8*(thetaHalf-pi/2)+pi/2), sin(thetaHalf).^2] + ...
     [0, 1.1];
+tinyPetalVerts2Norm = tinyPetalVertsIn(:,2) - min(tinyPetalVertsIn(:,2));
+tinyPetalVerts2Norm = tinyPetalVerts2Norm / max(tinyPetalVerts2Norm);
 petalEdges = [(1:numel(thetaHalf))', [(2:numel(thetaHalf)), 1]'];
 
 % Big outside
@@ -85,7 +89,9 @@ for i=1:nPetals
     V{end+1} = lV;
     F{end+1} = lF;
     b{end+1} = (1:size(tinyPetalVertsIn,1))';
-    bc{end+1} = repmat([247,252,185]/255, size(tinyPetalVertsIn,1), 1);
+    oColor = tinyPetalVerts2Norm.*[240,240,240]/255 + ...
+        (1-tinyPetalVerts2Norm).*[247,252,185]/255;
+    bc{end+1} = oColor;
     
     %Space between inside and outside
     [lV,lF] = triangle([petalVertsIn;tinyPetalVertsOut] * R^(i-1), ...
@@ -95,8 +101,11 @@ for i=1:nPetals
     F{end+1} = lF;
     b{end+1} = [(1:size(petalVertsIn,1))'; ...
         size(petalVertsIn,1)+(1:size(tinyPetalVertsOut,1))'];
-    bc{end+1} = [repmat([43,140,190]/255, size(petalVertsIn,1), 1); ...
-        repmat([78,179,211]/255, size(tinyPetalVertsOut,1), 1)];
+    oColor1 = (1-petalVerts2Norm).*[8,48,107]/255 + ...
+        petalVerts2Norm.*[43,140,190]/255;
+    oColor2 = (1-tinyPetalVerts2Norm).*[4,90,141]/255 + ...
+        tinyPetalVerts2Norm.*[78,179,211]/255;
+    bc{end+1} = [oColor1; oColor2];
 end
 
 end
