@@ -1,13 +1,20 @@
-function [Op, star0lump] = PhaseField3D(meshData, ellipticity)
+% Uses 0-Neumann Boundary Conditions
+function [Op, star0lump] = PhaseField3D(meshData, q, ellipticity)
+
+if nargin < 3
+    ellipticity = 0.01;
+end
 
 if nargin < 2
-    ellipticity = 0.01;
+    %% Compute frame field by MBO
+
+    q = MBO(meshData, RayMBO);
+    octa = OctaMBO;
+    q = octa.proj(q);
 end
 
 %% Load mesh.
 assert(~meshData.isGrid);
-L = meshData.L;
-star0 = meshData.M;
 
 verts = meshData.verts;
 tets = meshData.tets;
@@ -16,14 +23,7 @@ nv = meshData.nv;
 bdryIdx = meshData.bdryIdx;
 nb = length(bdryIdx);
 
-%% Compute frame field by MBO
-
-q = MBO(meshData, RayMBO);
-octa = OctaMBO;
-q = octa.proj(q);
-% frames = Coeff2Frames(q);
-
-% Convert frames to tensors
+%% Convert frames to tensors
 frameTensors = reshape(Monomial2Tensor(Sph024ToMonomial(Octa2Odeco(q))), 9, 9, nv);
 Tij = eye(9) - (1 - ellipticity) * (frameTensors ./ 24);
 
