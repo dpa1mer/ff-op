@@ -1,4 +1,8 @@
-function VisualizeFrameField2D(meshData, z4)
+function VisualizeFrameField2D(meshData, z4, ncurves)
+
+if nargin < 3
+    ncurves = 2000;
+end
 
 verts = meshData.verts;
 faces = meshData.faces;
@@ -6,10 +10,8 @@ tr = triangulation(faces, verts(:, 1:2));
 
 z = (z4.^(1/4)) .* [1 1i -1 -1i];
 
-np = 2000;
-points = verts(meshData.intIdx(randi(length(meshData.intIdx), np, 1)), 1:2); % start one path at each interior vertex
-np = size(points,1); % number of points moving around
-vel = randn(np, 2); % initial direction
+points = verts(meshData.intIdx(randi(length(meshData.intIdx), ncurves, 1)), 1:2); % start one path at each interior vertex
+vel = randn(ncurves, 2); % initial direction
 
 % stepsize for gradient descent
 stepsize = 0.5 * (mean(meshData.edgeLengths) - std(meshData.edgeLengths));
@@ -20,7 +22,7 @@ curveLength = 0.25 * max(ub - lb);
 % number of steps to flow
 nsteps = round(curveLength / stepsize);
 
-paths = nan(np, 2, nsteps);
+paths = nan(ncurves, 2, nsteps);
 paths(:, :, 1) = points;
 
 % Trace integral curves of frame field
@@ -61,9 +63,9 @@ function newVel = interpVelocity(pts, oldVel)
         newVel = zCandidates(idx);
         newVel = [real(newVel) imag(newVel)];
     else
-        zCandidates = reshape(z(faces(fIdx, :), :), np, 3, 4);
+        zCandidates = reshape(z(faces(fIdx, :), :), ncurves, 3, 4);
         [~, idx] = max(real(conj(oldVel) .* zCandidates), [], 3, 'linear');
-        newVel = sum(bary .* reshape(zCandidates(idx), np, 3), 2);
+        newVel = sum(bary .* reshape(zCandidates(idx), ncurves, 3), 2);
         newVel = [real(newVel) imag(newVel)];
     end
     newVel(badpts, :) = NaN;

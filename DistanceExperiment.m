@@ -36,9 +36,8 @@ hold on; scatter3(verts(source, 1), verts(source, 2), verts(source, 3), 200, 'r.
 
 %% Compute shortest paths - adapted from Justin's code
 
-np = 400;
+np = 400; % number of points moving around
 points = verts(meshData.intIdx(randi(length(meshData.intIdx), np, 1)),1:2); % start one path at each random interior vertex
-np = size(points,1); % number of points moving around
 
 % convenience matrices for divided difference approximation
 eps = 1e-6; % epsilon for divided difference gradients
