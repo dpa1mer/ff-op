@@ -60,13 +60,13 @@ function newVel = interpVelocity(pts, oldVel)
         [~, idx] = max(real(conj(oldVel) .* zCandidates), [], 2, 'linear');
         newVel = zCandidates(idx);
         newVel = [real(newVel) imag(newVel)];
-        newVel(badpts, :) = NaN;
     else
-        zCandidates = z(faces(fIdx, :));
-        [~, idx] = max(real(oldVel' * zCandidates), [], 2, 'linear');
-        newVel = sum(bary .* zCandidates(idx));
+        zCandidates = reshape(z(faces(fIdx, :), :), np, 3, 4);
+        [~, idx] = max(real(conj(oldVel) .* zCandidates), [], 3, 'linear');
+        newVel = sum(bary .* reshape(zCandidates(idx), np, 3), 2);
         newVel = [real(newVel) imag(newVel)];
     end
+    newVel(badpts, :) = NaN;
 end
 
 end
