@@ -40,7 +40,7 @@ for i=1:nsteps
     paths(:, :, i) = points;
 end
 
-figure; plot(squeeze(paths(:, 1, :))', squeeze(paths(:, 2, :))', 'LineWidth', 2);
+plot(squeeze(paths(:, 1, :))', squeeze(paths(:, 2, :))', 'LineWidth', 2);
 axis image off;
 colororder(cbrewer('Paired', 12));
 

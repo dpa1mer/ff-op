@@ -65,8 +65,6 @@ squareV = 10*[-1,-1; 1,-1; 1,1; -1,1];
 squareE = [1,2; 2,3; 3,4; 4,1];
 lineV = [squareV; circVerts];
 lineE = [squareE; 4+circEdges];
-b{end+1} = 4+(1:n)';
-bc{end+1} = repmat([247,252,253]/255, n, 1);
 holes = [0 0];
 for i=1:nPetals
     currN = size(lineV,1);
@@ -74,12 +72,16 @@ for i=1:nPetals
     lineV = [lineV; thesePetals];
     lineE = [lineE; currN+petalEdges];
     holes = [holes; mean(thesePetals)];
-    b{end} = [b{end}; currN+(1:size(thesePetals,1))'];
-    bc{end} = [bc{end}; repmat([247,252,253]/255, size(thesePetals,1), 1)];
 end
 [lV,lF] = triangle(lineV, lineE, holes,'Flags',flags);
 V{end+1} = lV;
 F{end+1} = lF;
+b{end+1} = unique(outline(lF));
+normb = normrow(lV(b{end},:));
+mnb = min(normb);
+mxb = max(normrow(petalVertsOut));
+lerp = min((normb-mnb)/(mxb-mnb), 1);
+bc{end+1} = lerp .* ([247,252,253]/255) + (1-lerp) .* ([161,217,155]/255);
 
 % Do every petal
 for i=1:nPetals
