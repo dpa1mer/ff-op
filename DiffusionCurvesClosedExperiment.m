@@ -30,6 +30,10 @@ for domaini = 1:numel(domains)
         hold on;
         for i = 1:numel(V)
             tsurf(F{i}, V{i}, 'FaceVertexCData',us{i});
+            outl = outline(F{i});
+            lX = [V{i}(outl(:,1),1)'; V{i}(outl(:,2),1)'];
+            lY = [V{i}(outl(:,1),2)'; V{i}(outl(:,2),2)'];
+            plot(lX, lY, '-k');
         end
         hold off;
         axis equal;
