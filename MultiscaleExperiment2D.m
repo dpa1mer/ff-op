@@ -18,6 +18,8 @@ for level = (levels-1):-1:1
     z4{level} = z4{level} ./ abs(z4{level});
 end
 
+VisualizeFrameField2D(meshData{levels}, z4{levels});
+
 for level = 1:levels
         meanEdgeLengths(level) = mean(meshData{level}.edgeLengths);
         fprintf('Level %d: mean edge length %d\n', level, meanEdgeLengths(level));
@@ -47,7 +49,7 @@ else
         bdryArcLength = cumsum([0; meshData{level}.edgeLengths(meshData{level}.bdryEdgeIdx)]);
         bdryArcLength = bdryArcLength(1:end-1) / bdryArcLength(end);
         bc = zeros(meshData{level}.nv, 1);
-        bc(meshData{level}.bdryEdges(:, 1)) = sin(2 * pi * bcFreq * bdryArcLength);
+        bc(meshData{level}.bdryEdges(:, 1)) = sign(sin(2 * pi * bcFreq * bdryArcLength));
         bc = bc(meshData{level}.bdryIdx);
         u = Dirichlet2D(meshData{level}, Op{level}, bc);
         figure('Name', sprintf('Level %d', level));
