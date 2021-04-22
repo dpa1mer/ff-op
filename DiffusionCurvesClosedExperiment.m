@@ -37,6 +37,7 @@ for domaini = 1:numel(domains)
         end
         hold off;
         axis equal;
+        axis off;
         shading interp;
         saveas(gcf, ['diffusioncurves-' domain '-' mode '.png']);
         
@@ -47,6 +48,7 @@ for domaini = 1:numel(domains)
                 VisualizeFrameField2D(ProcessMesh2D([V{i} zeros(size(V{i},1),1)], F{i}), zs{i}, ceil(sqrt(sum(doublearea(V{i},F{i})))*50));
             end
             hold off;
+            axis off;
             saveas(gcf, ['diffusioncurves-field-' domain '-' mode '.png']);
         end
     end
