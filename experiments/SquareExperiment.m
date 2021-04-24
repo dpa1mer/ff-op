@@ -7,8 +7,8 @@ evsAnalytic = sort(1e-2 .* (Kx(:).^4 + Ky(:).^4) + 2 .* Kx(:).^2 .* Ky(:).^2);
 figure; plot(evsAnalytic(1:100)); hold on;
 
 %% Compute spectrum empirically
-meshFiles = ["../../models/square0.03.obj", "../../models/square0.025.obj", ...
-             "../../models/square0.02.obj", "../../models/square0.015.obj"];
+meshFiles = ["meshes/square0.03.obj", "meshes/square0.025.obj", ...
+             "meshes/square0.02.obj", "meshes/square0.015.obj"];
 
 i = 1;
 for meshFile = meshFiles

@@ -15,7 +15,6 @@ faceEdgeLengths = vecnorm(faceEdgeVecs, 2, 3);
 faceEdgeTangents = faceEdgeVecs ./ faceEdgeLengths;
 faceEdgeTangents = faceEdgeTangents(:, :, 1) + 1i .* faceEdgeTangents(:, :, 2);
 faceEdgeNormals = 1i .* faceEdgeTangents;
-% faceEdgeTangents = permute(cat(3, real(faceEdgeTangents), imag(faceEdgeTangents)), [3 1 2]);
 faceEdgeNormals = permute(cat(3, real(faceEdgeNormals), imag(faceEdgeNormals)), [3 1 2]);
 
 % Gradient operator
@@ -115,15 +114,5 @@ if nargout > 3
     clampBasis = bdryBasis + singBasis + unclampedIdent;
     clampBasis = clampBasis(:, unclampedIdx);
 end
-
-%% Compute eigenfunctions
-
-% [V, lambda] = eigs(O + 1e-6 * M, M, 200, 'smallestabs');%, 'IsSymmetricDefinite', true);
-% figure;
-% % [cmin, cmax] = bounds(V(:, 1:64), 'all');
-% for k = 1:64
-%     subplot(8, 8, k);
-%     trisurf(faces, verts(:, 1), verts(:, 2), verts(:, 3), V(:, k), 'EdgeColor', 'none'); view(2); axis image off; shading interp; colormap viridis; %caxis([cmin cmax]);
-% end
 
 end

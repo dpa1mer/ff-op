@@ -1,23 +1,4 @@
-function [meanEdgeLengths, evs] = MultiscaleExperiment3D(colormap)
-
-% meshfiles = ["meshes/spheres/sphere_r0.15.mesh";
-%              "meshes/spheres/sphere_r0.14.mesh";
-%              "meshes/spheres/sphere_r0.13.mesh";
-%              "meshes/spheres/sphere_r0.12.mesh";
-%              "meshes/spheres/sphere_r0.11.mesh";
-%              "meshes/spheres/sphere_r0.10.mesh";
-%              "meshes/spheres/sphere_r0.09.mesh";
-%              "meshes/spheres/sphere_r0.08.mesh";
-%              "meshes/spheres/sphere_r0.07.mesh";
-%              "meshes/spheres/sphere_r0.06.mesh";
-%              "meshes/spheres/sphere_r0.05.mesh";
-%              "meshes/spheres/sphere_r0.04.mesh"];
-% %              "meshes/spheres/sphere_r0.03.mesh";
-% %              "meshes/spheres/sphere_r0.02.mesh"];
-
-meshfiles = ["../meshes/dbommes-meshes/teddy_80k.mesh";
-             "../meshes/dbommes-meshes/teddy_200k.mesh";
-             "../meshes/dbommes-meshes/teddy_370k.mesh"];
+function [meanEdgeLengths, evs] = MultiscaleExperiment3D(meshfiles, colormap)
 
 levels = length(meshfiles);
 

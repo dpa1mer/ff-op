@@ -36,7 +36,6 @@ volumes = TetVolumes(verts, tets);
 tetOppFaces = reshape(tets(:, flipud(nchoosek(1:4, 3))), nt, 4, 3);
 oppFaceNormals = cross(verts(tetOppFaces(:, :, 2), :) - verts(tetOppFaces(:, :, 1), :), ...
                        verts(tetOppFaces(:, :, 3), :) - verts(tetOppFaces(:, :, 1), :), 2);
-oppFaceCenters = squeeze(sum(reshape(verts(tetOppFaces, :), nt, 4, 3, 3), 3) ./ 3);
 oppFaceAreas = vecnorm(oppFaceNormals, 2, 2) ./ 2;
 oppFaceNormals = oppFaceNormals ./ oppFaceAreas;
 normalSigns = sign(dot(verts(tets, :) - verts(tetOppFaces(:, :, 1), :), oppFaceNormals, 2));
@@ -77,10 +76,6 @@ if neumann
     BTB = batchop('mult', BT, Bij, 'N', 'T');
     BTBi = batchop('pinv', BTB, 4);
     Tij(:,:,bdryIdx) = Tij(:,:,bdryIdx) - batchop('mult', batchop('mult', BT, BTBi, 'T', 'N'), BT, 'N', 'N');
-
-    Bi = repmat(reshape(1:6*nb, 6, 1, nb), 1, 9, 1);
-    Bj = repmat(reshape((9 * bdryIdx + (-8:0)).', 1, 9, nb), 6, 1, 1);
-    B = sparse(Bi(:), Bj(:), Bij(:), 6 * nb, 9 * nv);
 end
 
 %% Form frame field principal symbol matrix

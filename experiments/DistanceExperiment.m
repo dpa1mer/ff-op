@@ -27,14 +27,13 @@ else
     W = W(:, 4:end); D = D(4:end, 4:end);
 end
 
-% source = 2567;%4550;%21084;%randi(length(verts), 1);
 sqDist = sum((W - W(source, :)).^2 ./ (diag(D).').^2, 2);
 dist = sqrt(sqDist);
 figure; trisurf(faces, verts(:, 1), verts(:, 2), verts(:, 3), dist, 'EdgeColor', 'none');
 view(2); axis image off; shading interp; colormap viridis(20);
 hold on; scatter3(verts(source, 1), verts(source, 2), verts(source, 3), 200, 'r.');
 
-%% Compute shortest paths - adapted from Justin's code
+%% Compute shortest paths
 
 np = 400; % number of points moving around
 points = verts(meshData.intIdx(randi(length(meshData.intIdx), np, 1)),1:2); % start one path at each random interior vertex

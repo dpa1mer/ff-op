@@ -7,7 +7,7 @@ end
 % fd=@(p) dunion(drectangle(p,-1,1,-1,0),drectangle(p,-0.25,1,-0.5,1));
 % figure; [p,faces]=distmesh2d(fd,@huniform,0.02,[-1,-1;1,1],[-1 -1; -1 0; -0.25 0; -0.25 1; 1 1; 1 -1]);%; 0.5 -0.5; 0.5 -1]);
 % verts = [p, zeros(size(p, 1), 1)];
-[verts, faces] = load_mesh('../../models/polyrect2.obj');
+[verts, faces] = load_mesh('meshes/polyrect.obj');
 figure; trisurf(faces, verts(:, 1), verts(:, 2), verts(:, 3), sin(8*pi*verts(:, 1)) .* sin(8*pi*verts(:, 2)), 'EdgeColor', 'none'); view(2); axis image off; shading interp; colormap([0 0 0; 1 0 1]);
 nv = size(verts, 1);
 domain{1} = ProcessMesh2D(verts, faces);
@@ -32,7 +32,7 @@ x2 = reshape(reshape(xy(:,1,:), 2, 1, nv) .* reshape(xy(:,1,:), 1, 2, nv), 4, 1,
 x4 = x2 .* reshape(x2, 1, 4, nv);
 y2 = reshape(reshape(xy(:,2,:), 2, 1, nv) .* reshape(xy(:,2,:), 1, 2, nv), 4, 1, nv);
 y4 = y2 .* reshape(y2, 1, 4, nv);
-Tij{2} = reshape(max(batchop('eig', x4 + y4), [], 1), 1, 1, []) .* eye(4) - (1 - ellipticity) * (x4 + y4);
+Tij{2} = vecnorm(reshape(x4, [], 1, nv), 2, 1) .* eye(4) - (1 - ellipticity) * (x4 + y4);
 
 % figure; FancyQuiver([verts2;verts2], [[squeeze(xy(:, 1, :)).'; squeeze(xy(:, 2, :)).'] zeros(2*nv, 1)], viridis, 0); view(2); axis image off;
 
