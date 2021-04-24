@@ -35,7 +35,7 @@ delta(vIdx) = 1;
 for i = 0:-1:-3
     ellipticity = 5^i;
     [~, Tij] = Frame2Tensor2D(meshData, z4, ellipticity);
-    [Op, M] = PhaseField2D(meshData, Tij, false); % Natural boundary conditions
+    [Op, M] = FFOp2D(meshData, Tij, false); % Natural boundary conditions
     green = (M + diffusionTime * Op) \ (M * delta);
     figure('Name', sprintf('Ellipticity 5^%d', i), 'WindowState', 'maximized');
     trisurf(faces, verts(:, 1), verts(:, 2), verts(:, 3), green, 'EdgeColor', 'none');

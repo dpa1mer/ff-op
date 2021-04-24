@@ -16,7 +16,7 @@ for meshFile = meshFiles
     square = ProcessMesh2D(verts, faces);
     meanEdgeLengths(i) = mean(square.edgeLengths);
     [~, Tij] = Frame2Tensor2D(square, MBO2D(square, true), 1e-2);
-    [Op, M] = PhaseField2D(square, Tij, true);
+    [Op, M] = FFOp2D(square, Tij, true);
     evsEmpirical(:, i) = eigs(Op + 1e-6 * M, M, 100, 'smallestabs');
     i = i + 1;
 end

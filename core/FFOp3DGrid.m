@@ -1,4 +1,4 @@
-function V = PhaseField3DGrid(grid, q, ellipticity)
+function V = FFOp3DGrid(grid, q, ellipticity)
 
 if nargin < 3
     ellipticity = 0.01;

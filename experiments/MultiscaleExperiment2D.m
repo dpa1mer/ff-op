@@ -24,7 +24,7 @@ for level = 1:levels
         meanEdgeLengths(level) = mean(meshData{level}.edgeLengths);
         fprintf('Level %d: mean edge length %d\n', level, meanEdgeLengths(level));
         [~, Tij] = Frame2Tensor2D(meshData{level}, z4{level});
-        [Op{level}, M{level}] = PhaseField2D(meshData{level}, Tij, true);
+        [Op{level}, M{level}] = FFOp2D(meshData{level}, Tij, true);
 end
 
 if nargout > 1

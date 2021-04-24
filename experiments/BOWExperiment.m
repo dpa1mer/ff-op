@@ -6,7 +6,7 @@ nv = meshData.nv;
 
 % Use neumann BCs
 [~, Tij] = Frame2Tensor2D(meshData, MBO2D(meshData, true), 1e-2);
-[Op, ~] = PhaseField2D(meshData, Tij, true);
+[Op, ~] = FFOp2D(meshData, Tij, true);
 
 % Select random handles
 handleIdx = randi(nv, [nh 1]);

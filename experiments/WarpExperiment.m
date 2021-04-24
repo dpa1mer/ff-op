@@ -38,7 +38,7 @@ Tij{2} = reshape(max(batchop('eig', x4 + y4), [], 1), 1, 1, []) .* eye(4) - (1 -
 
 %% Compute and plot eigenfunctions on each domain
 for j = 1:2
-    [Op, M] = PhaseField2D(domain{j}, Tij{j}, true);
+    [Op, M] = FFOp2D(domain{j}, Tij{j}, true);
     [V, D] = eigs(Op + 1e-6 * M, M, 65, 'smallestabs');
     evs(:, j) = diag(D);
     figure; tlt = tiledlayout(8, 8);

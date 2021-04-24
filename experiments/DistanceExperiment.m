@@ -16,7 +16,7 @@ tr = triangulation(faces, verts(:, 1), verts(:, 2));
 [~, Tij] = Frame2Tensor2D(meshData, MBO2D(meshData, true), ellipticity);
 
 % Use 0-Neumann BCs
-[Op, M] = PhaseField2D(meshData, Tij, bcNeumann);
+[Op, M] = FFOp2D(meshData, Tij, bcNeumann);
 
 %% Approximate distance using eigenbasis
 [W, D] = eigs(Op + 1e-6 * M, M, 200, 'smallestabs', 'IsSymmetricDefinite', true);

@@ -45,7 +45,7 @@ for i = 1:numel(V)
                 z = z * exp(1i*pi);
             end
             [~, Tij] = Frame2Tensor2D(mesh, z, 0.01);
-            [Op, M] = PhaseField2D(mesh, Tij, false);
+            [Op, M] = FFOp2D(mesh, Tij, false);
             
             u = nan(size(Op,1),3);
             for j=1:3

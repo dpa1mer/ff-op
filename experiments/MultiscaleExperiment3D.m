@@ -46,7 +46,7 @@ for level = 1:levels
         meanEdgeLengths(level) = mean(vecnorm(meshData{level}.verts(meshData{level}.edges(:, 2), :) - ...
                                               meshData{level}.verts(meshData{level}.edges(:, 1), :), 2, 2));
         fprintf('Level %d: mean edge length %d\n', level, meanEdgeLengths(level));
-        [Op{level}, M{level}] = PhaseField3D(meshData{level}, q{level});
+        [Op{level}, M{level}] = FFOp3D(meshData{level}, q{level});
 end
 
 %% Solve eigenvalue problem

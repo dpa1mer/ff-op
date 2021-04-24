@@ -1,4 +1,4 @@
-function [Op, M, Bnn, clampBasis] = PhaseField2D(meshData, Tij, neumann)
+function [Op, M, Bnn, clampBasis] = FFOp2D(meshData, Tij, neumann)
 
 if nargin < 3
     neumann = false;

@@ -1,4 +1,4 @@
-function [Op, star0lump] = PhaseField3D(meshData, q, ellipticity, neumann)
+function [Op, star0lump] = FFOp3D(meshData, q, ellipticity, neumann)
 
 if nargin < 4
     neumann = true;
