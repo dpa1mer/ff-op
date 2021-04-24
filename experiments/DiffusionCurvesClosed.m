@@ -36,7 +36,7 @@ for i = 1:numel(V)
             end
             u = min_quad_with_fixed(0.5*Q, zeros(size(cV,1),1), cb, cbc);
         case 'odeco'
-            %Create the Palmer data structure
+            %Create the mesh data structure
             mesh = ProcessMesh2D([cV zeros(size(cV,1),1)], cF);
             
             %Create operator
