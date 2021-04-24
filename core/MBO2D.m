@@ -42,9 +42,4 @@ for j = 1:10
     z4 = z4 ./ crossNorm;
 end
 
-% z = (z4.^(1/4)) .* [1 1i -1 -1i];
-% crossField = cat(3, real(z), imag(z), zeros(size(z)));
-% figure; FancyQuiver(repmat(meshData.faceCenters, 4, 1), reshape((crossNorm + 1).^(-1) .* crossField, n * 4, 3), inferno, 0); view(2); axis image off;
-% figure; FancyQuiver(repmat(meshData.verts, 4, 1), reshape((crossNorm + 1).^(-1) .* crossField, n * 4, 3), inferno, 0); view(2); axis image off;
-
 end
