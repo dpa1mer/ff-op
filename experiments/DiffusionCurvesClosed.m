@@ -34,7 +34,6 @@ for i = 1:numel(V)
                     min(cbc(:,j))*ones(size(cV,1),1), ...
                     max(cbc(:,j))*ones(size(cV,1),1));
             end
-            u = min_quad_with_fixed(0.5*Q, zeros(size(cV,1),1), cb, cbc);
         case 'odeco'
             %Create the mesh data structure
             mesh = ProcessMesh2D([cV zeros(size(cV,1),1)], cF);
