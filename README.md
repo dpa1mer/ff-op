@@ -1,5 +1,6 @@
 # ff-op: Frame Field Operators
-This is the code for the paper "Frame Field Operators."
+This is the code for the paper
+> Palmer, David, Oded Stein, and Justin Solomon. "Frame Field Operators." SGP 2021, online.
 
 # Dependencies
 This code depends on
