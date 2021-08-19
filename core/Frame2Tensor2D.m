@@ -17,7 +17,7 @@ u2 = reshape(reshape(u, 2, 1, n) .* reshape(u, 1, 2, n), 4, 1, n);
 u4 = u2 .* reshape(u2, 1, 4, n);
 v2 = reshape(reshape(v, 2, 1, n) .* reshape(v, 1, 2, n), 4, 1, n);
 v4 = v2 .* reshape(v2, 1, 4, n);
-Tij = eye(4) - (1 - ellipticity) * (u4 + v4);
+Tij = reshape(abs(z4), 1, 1, n) .* eye(4) - (1 - ellipticity) * (u4 + v4);
 
 if n == nf
     crossFaceTensor = Tij;

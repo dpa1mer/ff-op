@@ -1,4 +1,4 @@
-function z4 = MBO2D(meshData, dual, tauMult)
+function [z4, crossNorm] = MBO2D(meshData, dual, tauMult)
 
 if nargin < 2
     dual = false;
